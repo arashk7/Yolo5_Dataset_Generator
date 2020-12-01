@@ -154,8 +154,8 @@ for i in range(len(main_db['image_url'])):
         bl_w_orig = bld_mask.shape[1]
         bl_h_orig = bld_mask.shape[0]
         
-        print(bl_w_orig)
-        print(bl_h_orig)
+        # print(bl_w_orig)
+        # print(bl_h_orig)
         
         '''Convert X, Y , Width, Height to the new Scale'''
         bl_x = bl_x_orig*ar_width
@@ -168,6 +168,14 @@ for i in range(len(main_db['image_url'])):
         ret,bld_thresh = cv.threshold(bld_gray,10,255,cv.THRESH_BINARY)
         contours, hierarchy = cv.findContours(bld_thresh,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            bl_x_box = bl_x_orig + x
+            bl_y_box = bl_y_orig + y
+            print(bl_x_box)
+            print(bl_y_box)
+            
+            
+            
             print('okay')
         input()
         
