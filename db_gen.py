@@ -5,6 +5,7 @@ import os
 import numpy as np
 import cv2 as cv
 import imageio
+import matplotlib.pyplot as plt 
 
 Image_Dim = (416,416)
 Output_Dir = 'E:\\Dataset/zhitang'
@@ -53,42 +54,42 @@ def image_roi(img, x1, y1, x2, y2):
     return img
 
 
-out_img_dir = 'images'
-''' Set directory for downloaded fundus images '''
+# out_img_dir = 'images'
+# ''' Set directory for downloaded fundus images '''
 
-out_img_resized = 'img_resized'
-''' Set directory for bleeding mask after processing '''
+# out_img_resized = 'img_resized'
+# ''' Set directory for bleeding mask after processing '''
 
-out_bld_dir = 'bleedings'
-''' Set directory for downloaded bleeding mask images '''
+# out_bld_dir = 'bleedings'
+# ''' Set directory for downloaded bleeding mask images '''
 
-out_bld_dir_extend = 'bld_extend'
-''' Set directory for bleeding mask after processing '''
+# out_bld_dir_extend = 'bld_extend'
+# ''' Set directory for bleeding mask after processing '''
 
-out_bld_dir_resized = 'bld_resized'
-''' Set directory for bleeding mask after resizing '''
+# out_bld_dir_resized = 'bld_resized'
+# ''' Set directory for bleeding mask after resizing '''
 
-# Read Arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('--in_csv_path', type=str, default='./ZhitangSeg1K.csv')
-''' Input CSV file'''
+# # Read Arguments
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--in_csv_path', type=str, default='./ZhitangSeg1K.csv')
+# ''' Input CSV file'''
 
-parser.add_argument('--out_db_dir', type=str, default='E:\Dataset/zhitang/dataset2/')
-''' Output dataset directory '''
+# parser.add_argument('--out_db_dir', type=str, default='E:\Dataset/zhitang/dataset2/')
+# ''' Output dataset directory '''
 
-arg = parser.parse_args()
-''' Process all the input arguments '''
+# arg = parser.parse_args()
+# ''' Process all the input arguments '''
 
-in_csv_path = arg.in_csv_path
-if not os.path.exists(in_csv_path):
-    raise EOFError('Input CSV file (' + str(in_csv_path) + ') not found')
-''' :raise error if the directory does not exist '''
-out_db_dir = arg.out_db_dir
-if not os.path.exists(out_db_dir):
-    raise EOFError('Output directory (' + str(out_db_dir) + ') not found')
-''' :raise error if the directory does not exist '''
+# in_csv_path = arg.in_csv_path
+# if not os.path.exists(in_csv_path):
+#     raise EOFError('Input CSV file (' + str(in_csv_path) + ') not found')
+# ''' :raise error if the directory does not exist '''
+# out_db_dir = arg.out_db_dir
+# if not os.path.exists(out_db_dir):
+#     raise EOFError('Output directory (' + str(out_db_dir) + ') not found')
+# ''' :raise error if the directory does not exist '''
 
-main_db = pd.read_csv(in_csv_path, keep_default_na=False)
+main_db = pd.read_csv('ZhitangSeg1K.csv', keep_default_na=False)
 ''' Read the CSV file '''
 image_urls = main_db['image_url']
 
@@ -98,39 +99,89 @@ co = 0
 for i in range(len(main_db['image_url'])):
     url = main_db['image_url'][i]
     ''' Read the image URL '''
-    # bleeding_url = main_db['bl_ink_url'][i]
-    ''' Read the bleeding mask URL '''
     
+    ''' Downloading Orig Image'''
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     filename = url.split(sep='/')[-1]
     print(filename)
-    with open(os.path.join(out_db_dir, out_img_dir, filename), "wb") as f:
+    with open(os.path.join(Output_Dir,Dataset_Name,'temp',filename), "wb") as f:
         with urllib.request.urlopen(req) as r:
             f.write(r.read())
-    orig = cv.imread(os.path.join(out_db_dir, out_img_dir, filename))
+    orig = cv.imread(os.path.join(Output_Dir,Dataset_Name,'temp',filename))
     
+    '''Resizing Image to specified size and calc the aspect ratio'''
     resized = cv.resize(orig, Image_Dim, interpolation = cv.INTER_AREA)
+    ar_width = resized.shape[1]/orig.shape[1]
+    ar_height = resized.shape[0]/orig.shape[0]
     
-    status = cv.imwrite(os.path.join(Output_Dir,Dataset_Name,filename),resized)
     
-    # if bleeding_url not in (None, ""):
-    #     ''' If the mask URL exist '''
-    #     bl_x = main_db['bl_point_X'][i]
-    #     ''' Read mask location X '''
-    #     bl_y = main_db['bl_point_Y'][i]
-    #     ''' Read mask location Y '''
-    #     if int(bl_x) == -1 or int(bl_y) == -1:
-    #         continue
+       
+    '''Save the resized image to the specified directory'''
+    status = cv.imwrite(os.path.join(Output_Dir,Dataset_Name,'Images',filename),resized)
+    
+    '''Reading different lesion url from the dataframe'''
+    ''' Read the bleeding mask URL '''
+    bleeding_url = main_db['bl_ink_url'][i]
+    
+    ''' Check the Bleeding mask URL exist '''
+    if bleeding_url not in (None, ""):
         
-    #     req = urllib.request.Request(bleeding_url, headers={'User-Agent': 'Mozilla/5.0'})
-    #     filename_s = bleeding_url.split(sep='/')[-1]
-    #     with open(os.path.join(out_db_dir, out_bld_dir, filename_s), "wb") as f:
-    #         with urllib.request.urlopen(req) as r:
-    #             f.write(r.read())
-
+        ''' Read mask location X '''
+        bl_x_orig = main_db['bl_point_X'][i]
+        
+        ''' Read mask location Y '''
+        bl_y_orig = main_db['bl_point_Y'][i]
+        
+        '''Check whether the position is wronge'''
+        if int(bl_x_orig) == -1 or int(bl_y_orig) == -1:
+            continue
+        
+        '''Downloading the Bleeding Mask '''
+        req = urllib.request.Request(bleeding_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = bleeding_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name,'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+        
+        '''Open the downloaded Mask file'''
+        bld_mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name,'temp', filename_s))
+        plt.imshow(bld_mask)
+        plt.show()
+        
+        '''Get the first frame of the Gif file'''
+        # bld_mask = bld_mask[0]
+        ''' Get Width and Height of the Mask area'''
+        bl_w_orig = bld_mask.shape[1]
+        bl_h_orig = bld_mask.shape[0]
+        
+        print(bl_w_orig)
+        print(bl_h_orig)
+        
+        '''Convert X, Y , Width, Height to the new Scale'''
+        bl_x = bl_x_orig*ar_width
+        bl_y = bl_y_orig*ar_height
+        bl_w = bl_w_orig*ar_width
+        bl_h = bl_h_orig*ar_height
+        
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(bld_mask,cv.COLOR_RGB2GRAY)
+        ret,bld_thresh = cv.threshold(bld_gray,10,255,cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            print('okay')
+        input()
+        
+        
+        
+    
+        
+        
+        
+        
+        
     #     limg = cv.imread(os.path.join(out_db_dir, out_img_dir, filename))
     #     ''' Read the downloaded fundus image using OpenCV API '''
-    #     simg = imageio.mimread(os.path.join(out_db_dir, out_bld_dir, filename_s))
+    #     
     #     ''' Read the downloaded mask image using OpenCV API '''
     #     simg = simg[0]
     #     ''' Get the first frame of the GIF file '''
