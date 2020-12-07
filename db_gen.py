@@ -13,84 +13,9 @@ Dataset_Name = 'Dataset_Zhitang_Yolo5'
 
 Classes = {'bleeding': 0, 'microaneurism': 1, 'soft_exudate': 2, 'hard_exudate': 3, 'IRMA': 4, 'laser_spot': 5,
            'new_blood_vessels': 6, 'optic_disk': 7, 'macular': 8}
-# s_img = cv2.imread("smaller_image.png")
-# l_img = cv2.imread("larger_image.jpg")
-# def image_to_origin_size(img_orig,img_mask,x_offset,y_offset):
-#     l_img[y_offset:y_offset+img.shape[0], x_offset:x_offset+s_img.shape[1]] = s_img
-# def img_extend(orig, mask_img, x, y):
-#     '''
-#     Make a new Mask image with same size of the original image
-#     Put the mask image into x, y location of the new mask image
-#     :param orig:
-#     Original fundus image downloaded directly from DeepDr dataset
-#     :param mask_img:
-#     provided disease Mask in the DeepDr dataset
-#     :param x:
-#     X location of the mask in the original image
-#     :param y:
-#     Y location of the mask in the original image
-#     :return:
-#     It returns new Mask image with same size as the original fundus image
-#     '''
-#     print(orig.shape)
-#     print(mask_img.shape)
-#     new_img = np.zeros(shape=[orig.shape[0], orig.shape[1]], dtype=np.uint8)
-#     xs = y
-#     ys = x
-#     if xs + mask_img.shape[0] > orig.shape[0]:
-#         xe = orig.shape[0]
-#     else:
-#         xe = xs + mask_img.shape[0]
-#
-#     if ys + mask_img.shape[1] > orig.shape[1]:
-#         ye = orig.shape[1]
-#     else:
-#         ye = ys + mask_img.shape[1]
-#
-#     new_img[xs:xe, ys:ye] = mask_img[0:xe - xs, 0:ye - ys]
-#     return new_img
-#     # cv.imwrite('res.jpg',new_img)
-#
-#
-# def image_roi(img, x1, y1, x2, y2):
-#     img = img[x1:x2, y1:y2]
-#     return img
 
+is_display = False
 
-# out_img_dir = 'images'
-# ''' Set directory for downloaded fundus images '''
-
-# out_img_resized = 'img_resized'
-# ''' Set directory for bleeding mask after processing '''
-
-# out_bld_dir = 'bleedings'
-# ''' Set directory for downloaded bleeding mask images '''
-
-# out_bld_dir_extend = 'bld_extend'
-# ''' Set directory for bleeding mask after processing '''
-
-# out_bld_dir_resized = 'bld_resized'
-# ''' Set directory for bleeding mask after resizing '''
-
-# # Read Arguments
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--in_csv_path', type=str, default='./ZhitangSeg1K.csv')
-# ''' Input CSV file'''
-
-# parser.add_argument('--out_db_dir', type=str, default='E:\Dataset/zhitang/dataset2/')
-# ''' Output dataset directory '''
-
-# arg = parser.parse_args()
-# ''' Process all the input arguments '''
-
-# in_csv_path = arg.in_csv_path
-# if not os.path.exists(in_csv_path):
-#     raise EOFError('Input CSV file (' + str(in_csv_path) + ') not found')
-# ''' :raise error if the directory does not exist '''
-# out_db_dir = arg.out_db_dir
-# if not os.path.exists(out_db_dir):
-#     raise EOFError('Output directory (' + str(out_db_dir) + ') not found')
-# ''' :raise error if the directory does not exist '''
 
 main_db = pd.read_csv('ZhitangSeg1K.csv', keep_default_na=False)
 ''' Read the CSV file '''
@@ -131,6 +56,12 @@ for i in range(len(main_db['image_url'])):
     bleeding_url = main_db['bl_ink_url'][i]
     microaneurism_url = main_db['ma_ink_url'][i]
     soft_exudate_url = main_db['se_ink_url'][i]
+    hard_exudate_url = main_db['he_ink_url'][i]
+    irma_url = main_db['irma_ink_url'][i]
+    laser_url = main_db['laser_ink_url'][i]
+    nbv_url = main_db['nbv_ink_url'][i]
+    optic_disk_url = main_db['od_ink_url'][i]
+    macular_url = main_db['mac_ink_url'][i]
 
     ''' Check the Bleeding mask URL exist '''
     if bleeding_url not in (None, ""):
@@ -167,12 +98,12 @@ for i in range(len(main_db['image_url'])):
         contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             x, y, w, h = cv.boundingRect(cnt)
-            bl_x_box = bl_x_orig + x
-            bl_y_box = bl_y_orig + y
+            x_box = bl_x_orig + x
+            y_box = bl_y_orig + y
 
             '''Convert X, Y , Width, Height to the new Scale'''
-            bl_x = bl_x_box * ar_width
-            bl_y = bl_y_box * ar_height
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
             bl_w = w * ar_width
             bl_h = h * ar_height
 
@@ -185,15 +116,15 @@ for i in range(len(main_db['image_url'])):
             # print(bl_x)
             # print(bl_y)
 
-            orig = cv.rectangle(orig, rec=(int(bl_x_box), int(bl_y_box), int(w), int(h)), color=(255, 0, 0),
-                                thickness=2)
             # resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 0, 0),thickness=1)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
                 str(Classes['bleeding']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
                     bl_h_n) + '\n')
-
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 0),
+                                thickness=2)
             # plt.imshow(orig)
             # plt.show()
             # plt.imshow(resized)
@@ -254,7 +185,8 @@ for i in range(len(main_db['image_url'])):
                 str(Classes['microaneurism']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
                     bl_h_n) + '\n')
 
-            orig = cv.rectangle(orig, rec=(int(bl_x_box), int(bl_y_box), int(w), int(h)), color=(0, 255, 0),
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(0, 255, 0),
                                 thickness=2)
 
     ''' Check the soft_exudate mask URL exist '''
@@ -310,8 +242,349 @@ for i in range(len(main_db['image_url'])):
                 str(Classes['soft_exudate']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
                     bl_h_n) + '\n')
 
-            orig = cv.rectangle(orig, rec=(int(bl_x_box), int(bl_y_box), int(w), int(h)), color=(255, 0, 255),
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
                                 thickness=2)
+
+    ''' Check the hard_exudate mask URL exist '''
+    if hard_exudate_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['he_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['he_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(hard_exudate_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = hard_exudate_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['hard_exudate']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
+                                thickness=2)
+
+    ''' Check the irma mask URL exist '''
+    if irma_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['irma_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['irma_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(irma_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = irma_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['IRMA']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
+                                thickness=2)
+    ''' Check the laser spot mask URL exist '''
+    if laser_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['laser_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['laser_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(laser_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = laser_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['laser_spot']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
+                                thickness=2)
+    ''' Check the new blood vessel mask URL exist '''
+    if nbv_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['nbv_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['nbv_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(nbv_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = nbv_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['new_blood_vessels']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
+                                thickness=2)
+    ''' Check the optic dist mask URL exist '''
+    if optic_disk_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['od_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['od_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(optic_disk_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = optic_disk_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['optic_disk']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if not is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 100, 255),
+                                thickness=2)
+
+    ''' Check the macular mask URL exist '''
+    if macular_url not in (None, ""):
+
+        ''' Read mask location X '''
+        x_orig = main_db['mac_point_X'][i]
+
+        ''' Read mask location Y '''
+        y_orig = main_db['mac_point_Y'][i]
+
+        '''Check whether the position is wronge'''
+        if int(x_orig) == -1 or int(y_orig) == -1:
+            continue
+
+        '''Downloading the  Mask '''
+        req = urllib.request.Request(macular_url, headers={'User-Agent': 'Mozilla/5.0'})
+        filename_s = macular_url.split(sep='/')[-1]
+        with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s), "wb") as f:
+            with urllib.request.urlopen(req) as r:
+                f.write(r.read())
+
+        '''Open the downloaded Mask file'''
+        mask = imageio.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename_s))
+
+        ''' Get Width and Height of the Mask area'''
+        w_orig = mask.shape[1]
+        h_orig = mask.shape[0]
+
+        '''Find Contours (find all the bleeding parts in the mask image)'''
+        bld_gray = cv.cvtColor(mask, cv.COLOR_RGB2GRAY)
+        ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv.boundingRect(cnt)
+            x_box = x_orig + x
+            y_box = y_orig + y
+
+            '''Convert X, Y , Width, Height to the new Scale'''
+            bl_x = x_box * ar_width
+            bl_y = y_box * ar_height
+            bl_w = w * ar_width
+            bl_h = h * ar_height
+
+            '''Normalize the results'''
+            bl_x_n = bl_x / Image_Dim[0]
+            bl_y_n = bl_y / Image_Dim[1]
+            bl_w_n = bl_w / Image_Dim[0]
+            bl_h_n = bl_h / Image_Dim[1]
+
+            ''' Write the bounding box into the file '''
+            labels_file.write(
+                str(Classes['macular']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                    bl_h_n) + '\n')
+
+            if is_display:
+                orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
+                                thickness=2)
+
     plt.imshow(orig)
     plt.show()
     labels_file.close()
