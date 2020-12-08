@@ -16,11 +16,13 @@ Classes = {'bleeding': 0, 'microaneurism': 1, 'soft_exudate': 2, 'hard_exudate':
 
 is_display = True
 
-
 '''Cut a part of the input image'''
+
+
 def image_roi(img, x1, y1, x2, y2):
     img = img[x1:x2, y1:y2]
     return img
+
 
 main_db = pd.read_csv('ZhitangSeg1K.csv', keep_default_na=False)
 ''' Read the CSV file '''
@@ -41,6 +43,16 @@ for i in range(len(main_db['image_url'])):
         with urllib.request.urlopen(req) as r:
             f.write(r.read())
     orig = cv.imread(os.path.join(Output_Dir, Dataset_Name, 'temp', filename))
+
+    ret, thresh = cv.threshold(orig[:, :, 1], 10, 255, cv.THRESH_BINARY)
+    contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    max_cnt = max(contours, key=cv.contourArea)
+    x, y, w, h = cv.boundingRect(max_cnt)
+    x1 = x - 70
+    y1 = 0
+    x2 = x + w + 70
+    y2 = orig.shape[0]
+    orig = image_roi(orig, y1, x1, y2, x2)
 
     '''Resizing Image to specified size and calc the aspect ratio'''
     resized = cv.resize(orig, Image_Dim, interpolation=cv.INTER_AREA)
@@ -81,6 +93,10 @@ for i in range(len(main_db['image_url'])):
         if int(bl_x_orig) == -1 or int(bl_y_orig) == -1:
             continue
 
+        '''convert the pose to new ROI image'''
+        bl_x_orig -= x1
+        bl_y_orig -= y1
+
         '''Downloading the Bleeding Mask '''
         req = urllib.request.Request(bleeding_url, headers={'User-Agent': 'Mozilla/5.0'})
         filename_s = bleeding_url.split(sep='/')[-1]
@@ -97,11 +113,13 @@ for i in range(len(main_db['image_url'])):
         bl_w_orig = bld_mask.shape[1]
         bl_h_orig = bld_mask.shape[0]
 
-        '''Find Contours (find all the bleeding parts in the mask image)'''
+        '''Converting images to gray and threshold them to find the masked area'''
         bld_gray = cv.cvtColor(bld_mask, cv.COLOR_RGB2GRAY)
         ret, bld_thresh = cv.threshold(bld_gray, 10, 255, cv.THRESH_BINARY)
+        '''Morphological Closing (Dilation + Erosion) to fill the holes in the mask'''
         kernel = np.ones((5, 5), np.uint8)
         bld_thresh = cv.morphologyEx(bld_thresh, cv.MORPH_CLOSE, kernel)
+        '''Find Contours (find all the bleeding parts in the mask image)'''
         contours, hierarchy = cv.findContours(bld_thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             x, y, w, h = cv.boundingRect(cnt)
@@ -131,7 +149,9 @@ for i in range(len(main_db['image_url'])):
                     bl_h_n) + '\n')
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 0),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 0, 0),
+                                       thickness=2)
 
     ''' Check the Microaneurism mask URL exist '''
     if microaneurism_url not in (None, ""):
@@ -145,6 +165,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the Bleeding Mask '''
         req = urllib.request.Request(microaneurism_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -190,7 +214,9 @@ for i in range(len(main_db['image_url'])):
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(0, 255, 0),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(0, 255, 0),
+                                       thickness=2)
 
     ''' Check the soft_exudate mask URL exist '''
     if soft_exudate_url not in (None, ""):
@@ -204,6 +230,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(soft_exudate_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -249,7 +279,9 @@ for i in range(len(main_db['image_url'])):
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(0, 0, 255),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(0, 0, 255),
+                                       thickness=2)
 
     ''' Check the hard_exudate mask URL exist '''
     if hard_exudate_url not in (None, ""):
@@ -263,6 +295,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(hard_exudate_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -308,7 +344,9 @@ for i in range(len(main_db['image_url'])):
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 255, 0),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 255, 0),
+                                       thickness=2)
 
     ''' Check the irma mask URL exist '''
     if irma_url not in (None, ""):
@@ -322,6 +360,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(irma_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -367,7 +409,9 @@ for i in range(len(main_db['image_url'])):
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 0, 255),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 0, 255),
+                                       thickness=2)
     ''' Check the laser spot mask URL exist '''
     if laser_url not in (None, ""):
 
@@ -380,6 +424,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(laser_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -425,7 +473,9 @@ for i in range(len(main_db['image_url'])):
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(0, 255, 255),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(0, 255, 255),
+                                       thickness=2)
     ''' Check the new blood vessel mask URL exist '''
     if nbv_url not in (None, ""):
 
@@ -438,6 +488,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(nbv_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -478,12 +532,15 @@ for i in range(len(main_db['image_url'])):
 
             ''' Write the bounding box into the file '''
             labels_file.write(
-                str(Classes['new_blood_vessels']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(bl_w_n) + ' ' + str(
+                str(Classes['new_blood_vessels']) + ' ' + str(bl_x_n) + ' ' + str(bl_y_n) + ' ' + str(
+                    bl_w_n) + ' ' + str(
                     bl_h_n) + '\n')
 
             if is_display:
                 orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 255, 255),
-                                thickness=2)
+                                    thickness=2)
+                resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 255, 255),
+                                       thickness=2)
     ''' Check the optic dist mask URL exist '''
     if optic_disk_url not in (None, ""):
 
@@ -496,6 +553,10 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(optic_disk_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -543,7 +604,9 @@ for i in range(len(main_db['image_url'])):
 
         if is_display:
             orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 100, 255),
-                            thickness=2)
+                                thickness=2)
+            resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 100, 255),
+                                thickness=2)
 
     ''' Check the macular mask URL exist '''
     if macular_url not in (None, ""):
@@ -557,6 +620,9 @@ for i in range(len(main_db['image_url'])):
         '''Check whether the position is wronge'''
         if int(x_orig) == -1 or int(y_orig) == -1:
             continue
+        '''convert the pose to new ROI image'''
+        x_orig -= x1
+        y_orig -= y1
 
         '''Downloading the  Mask '''
         req = urllib.request.Request(macular_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -603,11 +669,16 @@ for i in range(len(main_db['image_url'])):
 
         if is_display:
             orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 255, 100),
-                            thickness=2)
+                                thickness=2)
+            resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 255, 100),
+                                   thickness=2)
 
-    orig = cv.cvtColor(orig, cv.COLOR_RGB2BGR)
-    plt.imshow(orig)
-    plt.show()
+    # orig = cv.cvtColor(orig, cv.COLOR_RGB2BGR)
+    # resized = cv.cvtColor(resized, cv.COLOR_RGB2BGR)
+    # plt.imshow(orig)
+    # plt.show()
+    # plt.imshow(resized)
+    # plt.show()
     labels_file.close()
     # input()
     #     limg = cv.imread(os.path.join(out_db_dir, out_img_dir, filename))
