@@ -673,12 +673,12 @@ for i in range(len(main_db['image_url'])):
             resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 255, 100),
                                    thickness=2)
 
-    # orig = cv.cvtColor(orig, cv.COLOR_RGB2BGR)
-    # resized = cv.cvtColor(resized, cv.COLOR_RGB2BGR)
+    orig = cv.cvtColor(orig, cv.COLOR_RGB2BGR)
+    resized = cv.cvtColor(resized, cv.COLOR_RGB2BGR)
     # plt.imshow(orig)
     # plt.show()
-    # plt.imshow(resized)
-    # plt.show()
+    plt.imshow(resized)
+    plt.show()
     labels_file.close()
     # input()
     #     limg = cv.imread(os.path.join(out_db_dir, out_img_dir, filename))
