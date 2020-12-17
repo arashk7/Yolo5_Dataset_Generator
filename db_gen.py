@@ -6,10 +6,11 @@ import numpy as np
 import cv2 as cv
 import imageio
 import matplotlib.pyplot as plt
+import random
 
-Image_Dim = (416, 416)
+Image_Dim = (640, 640)
 Output_Dir = 'E:\\Dataset/zhitang'
-Dataset_Name = 'Dataset_Zhitang_Yolo5'
+Dataset_Name = 'Dataset_Zhitang_Yolo5_3'
 
 Classes = {'bleeding': 0, 'microaneurism': 1, 'soft_exudate': 2, 'hard_exudate': 3, 'IRMA': 4, 'laser_spot': 5,
            'new_blood_vessels': 6, 'optic_disk': 7, 'macular': 8}
@@ -29,16 +30,33 @@ main_db = pd.read_csv('ZhitangSeg1K.csv', keep_default_na=False)
 image_urls = main_db['image_url']
 
 print(len(main_db['image_url']))
+len_imgs = len(main_db['image_url'])
+splits = {'train', 'test', 'valid'}
+ts_threshold = int(len_imgs / 10)
+vl_threshold = ts_threshold + int(len_imgs / 10) * 2
+split_class = 'test'
 co = 0
 ''' record counter '''
-for i in range(len(main_db['image_url'])):
+
+'''ID list'''
+id_list=[x for x in range(len_imgs)]
+random.shuffle(id_list)
+for i in id_list:
+
+    if co <= ts_threshold:
+        split_class = 'test'
+    elif co > ts_threshold and co < vl_threshold:
+        split_class = 'valid'
+    else:
+        split_class = 'train'
+
     url = main_db['image_url'][i]
     ''' Read the image URL '''
 
     ''' Downloading Orig Image'''
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     filename = url.split(sep='/')[-1]
-    print(filename)
+    print(str(co)+'- '+split_class+' '+str(i)+'--'+filename)
     with open(os.path.join(Output_Dir, Dataset_Name, 'temp', filename), "wb") as f:
         with urllib.request.urlopen(req) as r:
             f.write(r.read())
@@ -60,13 +78,13 @@ for i in range(len(main_db['image_url'])):
     ar_height = resized.shape[0] / orig.shape[0]
 
     '''Save the resized image to the specified directory'''
-    status = cv.imwrite(os.path.join(Output_Dir, Dataset_Name, 'Images', filename), resized)
+    status = cv.imwrite(os.path.join(Output_Dir, Dataset_Name, split_class, 'images', filename), resized)
 
     ''' Open a text file to records all the labels'''
     arr = filename.split(sep='.')
     filename_new = ''.join(arr[0:-1]) + '.txt'
     print(filename_new)
-    labels_file = open(os.path.join(Output_Dir, Dataset_Name, 'Labels', filename_new), 'w')
+    labels_file = open(os.path.join(Output_Dir, Dataset_Name, split_class, 'labels', filename_new), 'w')
 
     '''Reading different lesion url from the dataframe'''
     ''' Read the bleeding mask URL '''
@@ -133,10 +151,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             # print(bl_x)
             # print(bl_y)
@@ -202,10 +220,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -267,10 +285,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -332,10 +350,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -397,10 +415,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -461,10 +479,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -525,10 +543,10 @@ for i in range(len(main_db['image_url'])):
             bl_h = h * ar_height
 
             '''Normalize the results'''
-            bl_x_n = bl_x / Image_Dim[0]
-            bl_y_n = bl_y / Image_Dim[1]
             bl_w_n = bl_w / Image_Dim[0]
             bl_h_n = bl_h / Image_Dim[1]
+            bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+            bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
             ''' Write the bounding box into the file '''
             labels_file.write(
@@ -592,10 +610,10 @@ for i in range(len(main_db['image_url'])):
         bl_h = h * ar_height
 
         '''Normalize the results'''
-        bl_x_n = bl_x / Image_Dim[0]
-        bl_y_n = bl_y / Image_Dim[1]
         bl_w_n = bl_w / Image_Dim[0]
         bl_h_n = bl_h / Image_Dim[1]
+        bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+        bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
         ''' Write the bounding box into the file '''
         labels_file.write(
@@ -606,7 +624,7 @@ for i in range(len(main_db['image_url'])):
             orig = cv.rectangle(orig, rec=(int(x_box), int(y_box), int(w), int(h)), color=(255, 100, 255),
                                 thickness=2)
             resized = cv.rectangle(resized, rec=(int(bl_x), int(bl_y), int(bl_w), int(bl_h)), color=(255, 100, 255),
-                                thickness=2)
+                                   thickness=2)
 
     ''' Check the macular mask URL exist '''
     if macular_url not in (None, ""):
@@ -657,10 +675,10 @@ for i in range(len(main_db['image_url'])):
         bl_h = h * ar_height
 
         '''Normalize the results'''
-        bl_x_n = bl_x / Image_Dim[0]
-        bl_y_n = bl_y / Image_Dim[1]
         bl_w_n = bl_w / Image_Dim[0]
         bl_h_n = bl_h / Image_Dim[1]
+        bl_x_n = bl_x / Image_Dim[0] + (bl_w_n / 2)
+        bl_y_n = bl_y / Image_Dim[1] + (bl_h_n / 2)
 
         ''' Write the bounding box into the file '''
         labels_file.write(
@@ -674,12 +692,16 @@ for i in range(len(main_db['image_url'])):
                                    thickness=2)
 
     orig = cv.cvtColor(orig, cv.COLOR_RGB2BGR)
+    cv.imwrite(os.path.join(Output_Dir, Dataset_Name, 'gt_imgs', split_class, filename), resized)
     resized = cv.cvtColor(resized, cv.COLOR_RGB2BGR)
     # plt.imshow(orig)
     # plt.show()
+
     plt.imshow(resized)
     plt.show()
     labels_file.close()
+
+    co += 1
     # input()
     #     limg = cv.imread(os.path.join(out_db_dir, out_img_dir, filename))
     #     ''' Read the downloaded fundus image using OpenCV API '''
